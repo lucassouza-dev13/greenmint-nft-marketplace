@@ -8,8 +8,13 @@ type StoredItem = {
   quantity: number
 }
 
-// Armazenamento temporário do mock.
-// Cada sessão identificada possui seu próprio carrinho.
+type StoredCart = {
+  items: StoredItem[]
+  couponCode: string | null
+}
+
+const STORAGE_KEY = 'greenmint_mock_carts_v1'
+
 const carts = new Map<string, StoredItem[]>()
 const coupons = new Map<string, string>()
 
@@ -20,6 +25,89 @@ const COUPON_DISCOUNTS: Record<string, bigint> = {
 
 const ETH_DECIMALS = 18n
 const WEI_PER_ETH = 10n ** ETH_DECIMALS
+
+// Carrega os carrinhos salvos no navegador
+function loadStoredCarts(): void {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+
+    if (!saved) return
+
+    const parsed: unknown = JSON.parse(saved)
+
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return
+    }
+
+    for (const [sessionId, value] of Object.entries(parsed)) {
+      if (
+        typeof value !== 'object' ||
+        value === null ||
+        !('items' in value) ||
+        !Array.isArray(value.items)
+      ) {
+        continue
+      }
+
+      const items: StoredItem[] = []
+
+      for (const item of value.items) {
+        if (
+          typeof item === 'object' &&
+          item !== null &&
+          typeof item.nftId === 'string' &&
+          Number.isSafeInteger(item.quantity) &&
+          item.quantity > 0
+        ) {
+          items.push({
+            nftId: item.nftId,
+            quantity: item.quantity,
+          })
+        }
+      }
+
+      carts.set(sessionId, items)
+
+      if (
+        'couponCode' in value &&
+        typeof value.couponCode === 'string' &&
+        Object.prototype.hasOwnProperty.call(
+          COUPON_DISCOUNTS,
+          value.couponCode
+        )
+      ) {
+        coupons.set(sessionId, value.couponCode)
+      }
+    }
+  } catch {
+    // Se o armazenamento estiver indisponível,
+    // a API continua funcionando em memória.
+  }
+}
+
+// Salva os carrinhos após cada alteração
+function saveStoredCarts(): void {
+  try {
+    const data: Record<string, StoredCart> = {}
+
+    for (const [sessionId, items] of carts) {
+      data[sessionId] = {
+        items,
+        couponCode: coupons.get(sessionId) ?? null,
+      }
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch {
+    // Falhas de armazenamento não interrompem a API.
+  }
+}
+
+loadStoredCarts()
 
 function toWei(eth: string): bigint {
   const [whole, fraction = ''] = eth.split('.')
@@ -40,6 +128,7 @@ function toWei(eth: string): bigint {
 
 function fromWei(wei: bigint): string {
   const whole = wei / WEI_PER_ETH
+
   const fraction = (wei % WEI_PER_ETH)
     .toString()
     .padStart(18, '0')
@@ -82,27 +171,29 @@ function buildCart(sessionId: string): Cart {
 
   const subtotalWei = items.reduce(
     (total, item) =>
-      total + toWei(item.nft.priceEth) * BigInt(item.quantity),
+      total +
+      toWei(item.nft.priceEth) * BigInt(item.quantity),
     0n
   )
 
- const couponCode = coupons.get(sessionId) ?? null
-const discountPercent = couponCode
-  ? (COUPON_DISCOUNTS[couponCode] ?? 0n)
-  : 0n
+  const couponCode = coupons.get(sessionId) ?? null
 
-const discountWei =
-  (subtotalWei * discountPercent) / 100n
+  const discountPercent = couponCode
+    ? (COUPON_DISCOUNTS[couponCode] ?? 0n)
+    : 0n
 
-const totalWei = subtotalWei - discountWei
+  const discountWei =
+    (subtotalWei * discountPercent) / 100n
 
-return {
-  items,
-  subtotalEth: fromWei(subtotalWei),
-  discountEth: fromWei(discountWei),
-  totalEth: fromWei(totalWei),
-  couponCode,
-}
+  const totalWei = subtotalWei - discountWei
+
+  return {
+    items,
+    subtotalEth: fromWei(subtotalWei),
+    discountEth: fromWei(discountWei),
+    totalEth: fromWei(totalWei),
+    couponCode,
+  }
 }
 
 function errorResponse(
@@ -110,54 +201,13 @@ function errorResponse(
   message: string,
   status: number
 ) {
-  return HttpResponse.json({ code, message }, { status })
+  return HttpResponse.json(
+    { code, message },
+    { status }
+  )
 }
 
 export const cartHandlers = [
-  
-  // Aplicar cupom de desconto
-  http.post('/api/cart/coupon', async ({ request }) => {
-    const sessionId = getSessionId(request)
-
-    const body = (await request.json()) as {
-      code?: string
-    }
-
-    const code =
-      typeof body.code === 'string'
-        ? body.code.trim().toUpperCase()
-        : ''
-
-    if (!Object.prototype.hasOwnProperty.call(COUPON_DISCOUNTS, code)) {
-      return errorResponse(
-        'INVALID_COUPON',
-        'Cupom inválido ou expirado.',
-        400
-      )
-    }
-
-    if (getStoredItems(sessionId).length === 0) {
-      return errorResponse(
-        'EMPTY_CART',
-        'Adicione um NFT antes de aplicar um cupom.',
-        400
-      )
-    }
-
-    coupons.set(sessionId, code)
-
-    return HttpResponse.json(buildCart(sessionId))
-  }),
-
-  // Remover cupom
-  http.delete('/api/cart/coupon', ({ request }) => {
-    const sessionId = getSessionId(request)
-
-    coupons.delete(sessionId)
-
-    return HttpResponse.json(buildCart(sessionId))
-  }),
-
   // Consultar carrinho
   http.get('/api/cart', ({ request }) => {
     return HttpResponse.json(
@@ -168,7 +218,8 @@ export const cartHandlers = [
   // Adicionar NFT
   http.post('/api/cart/items', async ({ request }) => {
     const sessionId = getSessionId(request)
-    const body = await request.json() as {
+
+    const body = (await request.json()) as {
       nftId?: string
       quantity?: number
     }
@@ -188,8 +239,8 @@ export const cartHandlers = [
     const quantity = body.quantity
 
     if (
-      !Number.isSafeInteger(quantity) ||
       quantity === undefined ||
+      !Number.isSafeInteger(quantity) ||
       quantity < 1
     ) {
       return errorResponse(
@@ -200,13 +251,17 @@ export const cartHandlers = [
     }
 
     const storedItems = [...getStoredItems(sessionId)]
+
     const existing = storedItems.find(
       (item) => item.nftId === nft.id
     )
 
     const currentQuantity = existing?.quantity ?? 0
 
-    if (currentQuantity + quantity > nft.availableQuantity) {
+    if (
+      currentQuantity + quantity >
+      nft.availableQuantity
+    ) {
       return errorResponse(
         'INSUFFICIENT_STOCK',
         'Quantidade indisponível em estoque.',
@@ -224,6 +279,7 @@ export const cartHandlers = [
     }
 
     carts.set(sessionId, storedItems)
+    saveStoredCarts()
 
     return HttpResponse.json(buildCart(sessionId))
   }),
@@ -235,7 +291,8 @@ export const cartHandlers = [
   }) => {
     const sessionId = getSessionId(request)
     const nftId = String(params.nftId)
-    const body = await request.json() as {
+
+    const body = (await request.json()) as {
       quantity?: number
     }
 
@@ -274,6 +331,7 @@ export const cartHandlers = [
     }
 
     const storedItems = [...getStoredItems(sessionId)]
+
     const existing = storedItems.find(
       (item) => item.nftId === nftId
     )
@@ -287,7 +345,9 @@ export const cartHandlers = [
     }
 
     existing.quantity = quantity
+
     carts.set(sessionId, storedItems)
+    saveStoredCarts()
 
     return HttpResponse.json(buildCart(sessionId))
   }),
@@ -300,12 +360,67 @@ export const cartHandlers = [
     const sessionId = getSessionId(request)
     const nftId = String(params.nftId)
 
-    const storedItems = getStoredItems(sessionId)
+    const remainingItems = getStoredItems(
+      sessionId
+    ).filter((item) => item.nftId !== nftId)
 
-    carts.set(
-      sessionId,
-      storedItems.filter((item) => item.nftId !== nftId)
-    )
+    carts.set(sessionId, remainingItems)
+
+    if (remainingItems.length === 0) {
+      coupons.delete(sessionId)
+    }
+
+    saveStoredCarts()
+
+    return HttpResponse.json(buildCart(sessionId))
+  }),
+
+  // Aplicar cupom
+  http.post('/api/cart/coupon', async ({ request }) => {
+    const sessionId = getSessionId(request)
+
+    const body = (await request.json()) as {
+      code?: string
+    }
+
+    const code =
+      typeof body.code === 'string'
+        ? body.code.trim().toUpperCase()
+        : ''
+
+    if (
+      !Object.prototype.hasOwnProperty.call(
+        COUPON_DISCOUNTS,
+        code
+      )
+    ) {
+      return errorResponse(
+        'INVALID_COUPON',
+        'Cupom inválido ou expirado.',
+        400
+      )
+    }
+
+    if (getStoredItems(sessionId).length === 0) {
+      return errorResponse(
+        'EMPTY_CART',
+        'Adicione um NFT antes de aplicar um cupom.',
+        400
+      )
+    }
+
+    coupons.set(sessionId, code)
+    saveStoredCarts()
+
+    return HttpResponse.json(buildCart(sessionId))
+  }),
+
+  // Remover cupom
+  http.delete('/api/cart/coupon', ({ request }) => {
+    const sessionId = getSessionId(request)
+
+    coupons.delete(sessionId)
+    saveStoredCarts()
 
     return HttpResponse.json(buildCart(sessionId))
   }),

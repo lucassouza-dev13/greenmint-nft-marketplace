@@ -10,6 +10,7 @@ import { NFTCatalog } from '../features/catalog/components/NFTCatalog'
 import { Header } from '../components/layout/Header'
 import { NFTDetail } from '../features/catalog/components/NFTDetail'
 import { CartPage } from '../features/cart/components/CartPage'
+import { CheckoutPage } from '../features/checkout/components/CheckoutPage'
 function RootLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -103,12 +104,19 @@ const cartRoute = createRoute({
   component: CartPage,
 })
 
+const checkoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/checkout',
+  component: CheckoutPage,
+})
+
 // REGISTRO DAS ROTAS
 const routeTree = rootRoute.addChildren([
   homeRoute,
   nftDetailRoute,
   loginRoute,
   cartRoute,
+  checkoutRoute,
 ])
 
 export const router = createRouter({

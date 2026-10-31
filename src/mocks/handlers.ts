@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { initialNFTs } from './fixtures/nfts'
 import { cartHandlers } from './cartHandlers'
 import type { NFT, NFTListResponse } from '../types/nft'
+import { orderHandlers } from './orderHandlers'
 
 const PAGE_SIZE = 6
 
@@ -113,6 +114,9 @@ export const handlers = [
     return HttpResponse.json(nft)
   }),
 
-  // Endpoints do carrinho
+   // Endpoints do carrinho
   ...cartHandlers,
+
+  // Endpoints dos pedidos
+  ...orderHandlers,
 ]
