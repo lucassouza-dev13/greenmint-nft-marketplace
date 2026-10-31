@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { useNFTDetail } from '../hooks/useNFTDetail'
+import { useAddCartItem } from '../../cart/hooks/useCart'
+import axios from 'axios'
 
 export function NFTDetail() {
   const { nftId } = useParams({ from: '/nft/$nftId' })
@@ -9,6 +11,32 @@ export function NFTDetail() {
 
   const [quantity, setQuantity] = useState(1)
   const [isFavorite, setIsFavorite] = useState(false)
+  const addCartItem = useAddCartItem()
+  const [cartMessage, setCartMessage] = useState('')
+  const [cartError, setCartError] = useState('')
+
+async function handleAddToCart() {
+  setCartMessage('')
+  setCartError('')
+
+  try {
+    await addCartItem.mutateAsync({
+      nftId,
+      quantity: selectedQuantity,
+    })
+
+    setCartMessage('NFT adicionado ao carrinho com sucesso!')
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      setCartError(
+        error.response?.data?.message ??
+          'Não foi possível adicionar o NFT ao carrinho.'
+      )
+    } else {
+      setCartError('Ocorreu um erro inesperado.')
+    }
+  }
+}
 
   if (isPending) {
     return (
@@ -174,14 +202,17 @@ export function NFTDetail() {
             {/* AÇÕES */}
             <div className="mt-8 flex flex-wrap gap-3">
               <button
-                type="button"
-                disabled={available === 0}
-                className="flex-1 rounded-lg bg-[#e49a55] px-6 py-3 font-semibold text-[#120d0a] transition hover:bg-[#f1b579] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {available === 0
-                  ? 'Esgotado'
-                  : 'Adicionar ao carrinho'}
-              </button>
+  type="button"
+  onClick={() => void handleAddToCart()}
+  disabled={available === 0 || addCartItem.isPending}
+  className="flex-1 rounded-lg bg-[#e49a55] px-6 py-3 font-semibold text-[#120d0a] transition hover:bg-[#f1b579] disabled:cursor-not-allowed disabled:opacity-40"
+>
+  {available === 0
+    ? 'Esgotado'
+    : addCartItem.isPending
+      ? 'Adicionando...'
+      : 'Adicionar ao carrinho'}
+</button>
 
               <button
                 type="button"
@@ -193,9 +224,19 @@ export function NFTDetail() {
               </button>
             </div>
 
-            <p className="mt-3 text-xs text-[#b9a89b]">
-              A integração do carrinho será implementada na próxima etapa.
-            </p>
+            {cartMessage && (
+  <p role="status" className="mt-3 text-sm text-green-400">
+    {cartMessage}
+  </p>
+)}
+
+{cartError && (
+  <p role="alert" className="mt-3 text-sm text-red-400">
+    {cartError}
+  </p>
+)}
+
+            
           </div>
         </div>
       </div>
