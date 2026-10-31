@@ -9,7 +9,7 @@ import {
 import { NFTCatalog } from '../features/catalog/components/NFTCatalog'
 import { Header } from '../components/layout/Header'
 import { NFTDetail } from '../features/catalog/components/NFTDetail'
-
+import { CartPage } from '../features/cart/components/CartPage'
 function RootLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -100,7 +100,7 @@ const loginRoute = createRoute({
 const cartRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/carrinho',
-  component: () => <h1>Carrinho - GreenMint</h1>,
+  component: CartPage,
 })
 
 // REGISTRO DAS ROTAS
