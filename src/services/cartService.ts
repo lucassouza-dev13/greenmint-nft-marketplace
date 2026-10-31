@@ -33,12 +33,25 @@ export const cartService = {
     return response.data
   },
 
-  // Remover NFT
-  async removeItem(nftId: string): Promise<Cart> {
+    async removeItem(nftId: string): Promise<Cart> {
     const response = await api.delete<Cart>(
       `/cart/items/${encodeURIComponent(nftId)}`
     )
 
     return response.data
   },
+
+  async applyCoupon(code: string): Promise<Cart> {
+    const response = await api.post<Cart>('/cart/coupon', { code })
+    return response.data
+  },
+
+  async removeCoupon(): Promise<Cart> {
+    const response = await api.delete<Cart>('/cart/coupon')
+    return response.data
+  },
 }
+
+
+
+  

@@ -11,6 +11,12 @@ type StoredItem = {
 // Armazenamento temporário do mock.
 // Cada sessão identificada possui seu próprio carrinho.
 const carts = new Map<string, StoredItem[]>()
+const coupons = new Map<string, string>()
+
+const COUPON_DISCOUNTS: Record<string, bigint> = {
+  GREEN10: 10n,
+  WELCOME5: 5n,
+}
 
 const ETH_DECIMALS = 18n
 const WEI_PER_ETH = 10n ** ETH_DECIMALS
@@ -80,13 +86,23 @@ function buildCart(sessionId: string): Cart {
     0n
   )
 
-  return {
-    items,
-    subtotalEth: fromWei(subtotalWei),
-    discountEth: '0',
-    totalEth: fromWei(subtotalWei),
-    couponCode: null,
-  }
+ const couponCode = coupons.get(sessionId) ?? null
+const discountPercent = couponCode
+  ? (COUPON_DISCOUNTS[couponCode] ?? 0n)
+  : 0n
+
+const discountWei =
+  (subtotalWei * discountPercent) / 100n
+
+const totalWei = subtotalWei - discountWei
+
+return {
+  items,
+  subtotalEth: fromWei(subtotalWei),
+  discountEth: fromWei(discountWei),
+  totalEth: fromWei(totalWei),
+  couponCode,
+}
 }
 
 function errorResponse(
@@ -98,6 +114,50 @@ function errorResponse(
 }
 
 export const cartHandlers = [
+  
+  // Aplicar cupom de desconto
+  http.post('/api/cart/coupon', async ({ request }) => {
+    const sessionId = getSessionId(request)
+
+    const body = (await request.json()) as {
+      code?: string
+    }
+
+    const code =
+      typeof body.code === 'string'
+        ? body.code.trim().toUpperCase()
+        : ''
+
+    if (!Object.prototype.hasOwnProperty.call(COUPON_DISCOUNTS, code)) {
+      return errorResponse(
+        'INVALID_COUPON',
+        'Cupom inválido ou expirado.',
+        400
+      )
+    }
+
+    if (getStoredItems(sessionId).length === 0) {
+      return errorResponse(
+        'EMPTY_CART',
+        'Adicione um NFT antes de aplicar um cupom.',
+        400
+      )
+    }
+
+    coupons.set(sessionId, code)
+
+    return HttpResponse.json(buildCart(sessionId))
+  }),
+
+  // Remover cupom
+  http.delete('/api/cart/coupon', ({ request }) => {
+    const sessionId = getSessionId(request)
+
+    coupons.delete(sessionId)
+
+    return HttpResponse.json(buildCart(sessionId))
+  }),
+
   // Consultar carrinho
   http.get('/api/cart', ({ request }) => {
     return HttpResponse.json(

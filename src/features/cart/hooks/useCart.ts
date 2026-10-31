@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query'
 
 import { cartService } from '../../../services/cartService'
+
 import type {
   AddCartItemInput,
   UpdateCartItemInput,
@@ -13,7 +14,7 @@ import type {
 
 const CART_QUERY_KEY = ['cart'] as const
 
-// Consultar o carrinho
+// Consultar carrinho
 export function useCart() {
   return useQuery({
     queryKey: CART_QUERY_KEY,
@@ -57,6 +58,34 @@ export function useRemoveCartItem() {
   return useMutation({
     mutationFn: (nftId: string) =>
       cartService.removeItem(nftId),
+
+    onSuccess: (cart) => {
+      queryClient.setQueryData(CART_QUERY_KEY, cart)
+    },
+  })
+}
+
+// Aplicar cupom
+export function useApplyCoupon() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (code: string) =>
+      cartService.applyCoupon(code),
+
+    onSuccess: (cart) => {
+      queryClient.setQueryData(CART_QUERY_KEY, cart)
+    },
+  })
+}
+
+// Remover cupom
+export function useRemoveCoupon() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () =>
+      cartService.removeCoupon(),
 
     onSuccess: (cart) => {
       queryClient.setQueryData(CART_QUERY_KEY, cart)
