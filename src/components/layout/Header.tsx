@@ -12,6 +12,7 @@ import {
   useCurrentUser,
   useLogout,
 } from '../../features/auth/hooks/useAuth'
+import { useCart } from '../../features/cart/hooks/useCart'
 
 export function Header() {
   const navigate = useNavigate()
@@ -19,9 +20,16 @@ export function Header() {
 
   const currentUser = useCurrentUser()
   const logout = useLogout()
+  const cart = useCart()
 
   const user = currentUser.data
   const isAuthenticated = Boolean(user)
+
+  const cartQuantity =
+    cart.data?.items.reduce(
+      (total, item) => total + item.quantity,
+      0
+    ) ?? 0
 
   async function handleLogout() {
     try {
@@ -64,10 +72,23 @@ export function Header() {
         <div className="flex items-center gap-3">
           <Link
             to="/carrinho"
-            aria-label="Abrir carrinho"
-            className="rounded-lg p-2 text-[#f5f0e8] hover:bg-[#30221c]"
+            aria-label={
+              cartQuantity > 0
+                ? `Abrir carrinho, ${cartQuantity} itens`
+                : 'Abrir carrinho'
+            }
+            className="relative rounded-lg p-2 text-[#f5f0e8] hover:bg-[#30221c]"
           >
             <ShoppingCart size={22} />
+
+            {cartQuantity > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#e49a55] px-1 text-[11px] font-bold leading-none text-[#120d0a]"
+              >
+                {cartQuantity > 99 ? '99+' : cartQuantity}
+              </span>
+            )}
           </Link>
 
           {isAuthenticated ? (
