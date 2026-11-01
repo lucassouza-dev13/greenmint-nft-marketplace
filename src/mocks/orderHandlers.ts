@@ -1,6 +1,11 @@
+
 import { http, HttpResponse } from 'msw'
 
 import { initialNFTs } from './fixtures/nfts'
+import {
+  buildCart,
+  clearCartAfterOrder,
+} from './cartHandlers'
 
 import {
   findOrder,
@@ -9,6 +14,7 @@ import {
   saveOrder,
 } from './orderStore'
 
+
 import type {
   CreateOrderInput,
   Order,
@@ -16,7 +22,6 @@ import type {
   WalletProvider,
 } from '../types/order'
 
-// Retorna erros padronizados da API
 function errorResponse(
   code: string,
   message: string,
@@ -40,7 +45,14 @@ const validNetworks: PaymentNetwork[] = [
   'solana',
 ]
 
-// Valida os dados recebidos
+// Relaciona os pedidos às sessões que os criaram.
+// Nesta etapa, os dados ainda são temporários.
+const orderOwners = new Map<string, string>()
+
+function getSessionId(request: Request): string {
+  return request.headers.get('x-session-id') ?? 'guest'
+}
+
 function isValidOrderInput(
   input: Partial<CreateOrderInput>
 ): input is CreateOrderInput {
@@ -61,14 +73,12 @@ function isValidOrderInput(
 export const orderHandlers = [
   // Criar pedido
   http.post('/api/orders', async ({ request }) => {
-    const sessionId =
-      request.headers.get('x-session-id') ?? 'guest'
+    const sessionId = getSessionId(request)
 
     let input: Partial<CreateOrderInput>
 
     try {
-      input =
-        (await request.json()) as Partial<CreateOrderInput>
+      input = (await request.json()) as Partial<CreateOrderInput>
     } catch {
       return errorResponse(
         'INVALID_BODY',
@@ -85,7 +95,9 @@ export const orderHandlers = [
       )
     }
 
-    // Evita duplicação de pedidos
+    // Evita pedidos duplicados.
+    // Essa verificação acontece antes de consultar o carrinho,
+    // pois ele será limpo após a primeira compra.
     const existingOrder = findOrderByIdempotencyKey(
       sessionId,
       input.idempotencyKey
@@ -95,44 +107,10 @@ export const orderHandlers = [
       return HttpResponse.json(existingOrder)
     }
 
-    // O carrinho será consultado pela API simulada
-    const cartResponse = await fetch('/api/cart', {
-      headers: {
-        'x-session-id': sessionId,
-      },
-    })
+   // Consulta diretamente o carrinho da API simulada.
+    const cart = buildCart(sessionId)
 
-    if (!cartResponse.ok) {
-      return errorResponse(
-        'CART_ERROR',
-        'Não foi possível consultar o carrinho.',
-        502
-      )
-    }
-
-    const cart = (await cartResponse.json()) as {
-      items: Array<{
-        nftId: string
-        quantity: number
-        nft: {
-          network: PaymentNetwork
-        }
-      }>
-      subtotalEth: string
-      discountEth: string
-      totalEth: string
-      couponCode: string | null
-    }
-
-    if (cart.items.length === 0) {
-      return errorResponse(
-        'EMPTY_CART',
-        'Seu carrinho está vazio.',
-        400
-      )
-    }
-
-    // Verifica se os NFTs pertencem à rede selecionada
+    // Todos os NFTs devem pertencer à rede selecionada.
     const incompatibleItem = cart.items.find(
       (item) => item.nft.network !== input.network
     )
@@ -140,16 +118,16 @@ export const orderHandlers = [
     if (incompatibleItem) {
       return errorResponse(
         'NETWORK_MISMATCH',
-        'Todos os NFTs do pedido precisam pertencer à rede selecionada.',
+        'Todos os NFTs precisam pertencer à rede selecionada.',
         400
       )
     }
 
-    // Valida disponibilidade no momento da compra
+    // Verifica disponibilidade antes de criar o pedido.
     for (const item of cart.items) {
       const nft = initialNFTs.find(
-  (candidate) => candidate.id === item.nftId
-)
+        (candidate) => candidate.id === item.nftId
+      )
 
       if (
         !nft ||
@@ -170,7 +148,10 @@ export const orderHandlers = [
     const order: Order = {
       id: generateOrderId(),
       status: 'confirmed',
-      items: cart.items as Order['items'],
+      items: cart.items.map((item) => ({
+        ...item,
+        nft: { ...item.nft },
+      })),
       walletProvider: input.walletProvider,
       walletAddress: input.walletAddress.trim(),
       network: input.network,
@@ -182,11 +163,29 @@ export const orderHandlers = [
       updatedAt: now,
     }
 
+    // Registra o pedido e sua chave de idempotência.
     saveOrder(
       sessionId,
       input.idempotencyKey,
       order
     )
+
+    orderOwners.set(order.id, sessionId)
+
+    // Atualiza o estoque dos NFTs adquiridos.
+    for (const item of cart.items) {
+      const nft = initialNFTs.find(
+        (candidate) => candidate.id === item.nftId
+      )
+
+      if (nft) {
+        nft.availableQuantity -= item.quantity
+        nft.version += 1
+      }
+    }
+
+    // Limpa o carrinho somente após registrar o pedido.
+    clearCartAfterOrder(sessionId)
 
     return HttpResponse.json(order, {
       status: 201,
@@ -194,11 +193,21 @@ export const orderHandlers = [
   }),
 
   // Consultar pedido
-  http.get('/api/orders/:orderId', ({ params }) => {
+  http.get('/api/orders/:orderId', ({ request, params }) => {
+    const sessionId = getSessionId(request)
     const orderId = String(params.orderId)
+
     const order = findOrder(orderId)
 
     if (!order) {
+      return errorResponse(
+        'ORDER_NOT_FOUND',
+        'Pedido não encontrado.',
+        404
+      )
+    }
+
+    if (orderOwners.get(orderId) !== sessionId) {
       return errorResponse(
         'ORDER_NOT_FOUND',
         'Pedido não encontrado.',

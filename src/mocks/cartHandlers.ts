@@ -145,7 +145,13 @@ function getStoredItems(sessionId: string): StoredItem[] {
   return carts.get(sessionId) ?? []
 }
 
-function buildCart(sessionId: string): Cart {
+export function clearCartAfterOrder(sessionId: string): void {
+  carts.delete(sessionId)
+  coupons.delete(sessionId)
+  saveStoredCarts()
+}
+
+export function buildCart(sessionId: string): Cart {
   const storedItems = getStoredItems(sessionId)
 
   const items: CartItem[] = storedItems.flatMap((item) => {

@@ -11,6 +11,7 @@ import { Header } from '../components/layout/Header'
 import { NFTDetail } from '../features/catalog/components/NFTDetail'
 import { CartPage } from '../features/cart/components/CartPage'
 import { CheckoutPage } from '../features/checkout/components/CheckoutPage'
+import OrderConfirmationPage from '../features/checkout/components/OrderConfirmationPage'
 function RootLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -110,6 +111,12 @@ const checkoutRoute = createRoute({
   component: CheckoutPage,
 })
 
+const orderConfirmationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/pedido/$orderId',
+  component: OrderConfirmationPage,
+})
+
 // REGISTRO DAS ROTAS
 const routeTree = rootRoute.addChildren([
   homeRoute,
@@ -117,6 +124,7 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   cartRoute,
   checkoutRoute,
+  orderConfirmationRoute,
 ])
 
 export const router = createRouter({
