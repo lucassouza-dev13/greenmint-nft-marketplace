@@ -51,7 +51,9 @@ export function SocketManager() {
     socket.on('nft.updated', handleNFTUpdated)
     socket.on('order.updated', handleOrderUpdated)
 
+    if (import.meta.env.DEV || import.meta.env.VITE_SOCKET_URL) {
     socket.connect()
+    }
 
     return () => {
       socket.off('connect', handleConnect)

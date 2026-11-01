@@ -130,6 +130,15 @@ export const orderHandlers = [
 
    // Consulta diretamente o carrinho da API simulada.
     const cart = buildCart(sessionId)
+    
+if (cart.items.length === 0) {
+  return errorResponse(
+    'EMPTY_CART',
+    'Adicione pelo menos um NFT ao carrinho antes de finalizar a compra.',
+    400
+  )
+}
+
 
     // Todos os NFTs devem pertencer à rede selecionada.
     const incompatibleItem = cart.items.find(
