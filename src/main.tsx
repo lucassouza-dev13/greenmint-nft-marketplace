@@ -2,6 +2,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
+import { SocketManager } from './components/SocketManager'
 import {
   QueryClient,
   QueryClientProvider,
@@ -27,9 +28,7 @@ async function enableMocking() {
 
   const { worker } = await import('./mocks/browser')
 
-  await worker.start({
-    onUnhandledRequest: 'warn',
-  })
+  await worker.start()
 }
 
 async function bootstrap() {
@@ -38,7 +37,8 @@ async function bootstrap() {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+      <SocketManager />
+      <RouterProvider router={router} />
       </QueryClientProvider>
     </StrictMode>,
   )

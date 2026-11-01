@@ -2,6 +2,7 @@
 import { http, HttpResponse } from 'msw'
 
 import { initialNFTs } from './fixtures/nfts'
+import { saveNFTStock } from './nftStore'
 import {
   buildCart,
   clearCartAfterOrder,
@@ -171,6 +172,7 @@ export const orderHandlers = [
     )
 
 
+    
     // Atualiza o estoque dos NFTs adquiridos.
     for (const item of cart.items) {
       const nft = initialNFTs.find(
@@ -183,8 +185,12 @@ export const orderHandlers = [
       }
     }
 
+    // Persiste o estoque atualizado no navegador.
+    saveNFTStock()
+
     // Limpa o carrinho somente após registrar o pedido.
     clearCartAfterOrder(sessionId)
+
 
     return HttpResponse.json(order, {
       status: 201,
