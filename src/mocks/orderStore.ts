@@ -130,3 +130,14 @@ export function saveOrder(
 
   saveStoredOrders()
 }
+
+
+export function findOrdersByOwner(ownerId: string): Order[] {
+  return Array.from(orders.values())
+    .filter((order) => orderOwners.get(order.id) === ownerId)
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() -
+        new Date(a.createdAt).getTime()
+    )
+}

@@ -14,6 +14,8 @@ import { CheckoutPage } from '../features/checkout/components/CheckoutPage'
 import OrderConfirmationPage from '../features/checkout/components/OrderConfirmationPage'
 import { LoginPage } from '../features/auth/components/LoginPage'
 import { RegisterPage } from '../features/auth/components/RegisterPage'
+import { AccountPage } from '../features/account/components/AccountPage'
+
 function RootLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -100,6 +102,7 @@ const loginRoute = createRoute({
   component: LoginPage,
 })
 
+// ROTA DE CADASTRO
 const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/cadastro',
@@ -113,16 +116,25 @@ const cartRoute = createRoute({
   component: CartPage,
 })
 
+// ROTA DE CHECKOUT
 const checkoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/checkout',
   component: CheckoutPage,
 })
 
+// ROTA DE CONFIRMAÇÃO DO PEDIDO
 const orderConfirmationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/pedido/$orderId',
   component: OrderConfirmationPage,
+})
+
+// ROTA DA ÁREA DO COLECIONADOR
+const accountRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/minha-conta',
+  component: AccountPage,
 })
 
 // REGISTRO DAS ROTAS
@@ -130,10 +142,11 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   nftDetailRoute,
   loginRoute,
+  registerRoute,
   cartRoute,
   checkoutRoute,
   orderConfirmationRoute,
-  registerRoute,
+  accountRoute,
 ])
 
 export const router = createRouter({

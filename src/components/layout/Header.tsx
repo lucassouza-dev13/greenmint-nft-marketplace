@@ -8,8 +8,10 @@ import {
   UserRound,
 } from 'lucide-react'
 import { useState } from 'react'
-import { useCurrentUser, useLogout } from '../../features/auth/hooks/useAuth'
-
+import {
+  useCurrentUser,
+  useLogout,
+} from '../../features/auth/hooks/useAuth'
 
 export function Header() {
   const navigate = useNavigate()
@@ -18,7 +20,7 @@ export function Header() {
   const currentUser = useCurrentUser()
   const logout = useLogout()
 
- const user = currentUser.data
+  const user = currentUser.data
   const isAuthenticated = Boolean(user)
 
   async function handleLogout() {
@@ -52,10 +54,10 @@ export function Header() {
           </Link>
 
           <Link
-            to={isAuthenticated ? '/' : '/login'}
+            to={isAuthenticated ? '/minha-conta' : '/login'}
             className="text-sm text-[#f5f0e8] hover:text-[#e49a55]"
           >
-            {isAuthenticated ? `Olá, ${user?.name}` : 'Minha conta'}
+            Minha conta
           </Link>
         </nav>
 
@@ -70,9 +72,14 @@ export function Header() {
 
           {isAuthenticated ? (
             <>
-              <span className="hidden text-sm text-[#e49a55] lg:inline">
+              <Link
+                to="/minha-conta"
+                title="Minha conta"
+                aria-label="Abrir minha conta"
+                className="hidden text-sm text-[#e49a55] hover:underline lg:inline"
+              >
                 {user?.name}
-              </span>
+              </Link>
 
               <button
                 type="button"
@@ -125,10 +132,14 @@ export function Header() {
 
           {isAuthenticated ? (
             <>
-              <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-[#e49a55]">
+              <Link
+                to="/minha-conta"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-[#e49a55] hover:bg-[#30221c]"
+              >
                 <UserRound size={18} />
-                {user?.name}
-              </div>
+                Minha conta — {user?.name}
+              </Link>
 
               <button
                 type="button"

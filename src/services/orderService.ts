@@ -7,6 +7,12 @@ import type {
 } from '../types/order'
 
 export const orderService = {
+  // Listar histórico de pedidos
+  async getAll(): Promise<Order[]> {
+    const { data } = await api.get<Order[]>('/orders')
+    return data
+  },
+
   // Criar pedido pela API
   async createOrder(input: CreateOrderInput): Promise<Order> {
     const response = await api.post<Order>(

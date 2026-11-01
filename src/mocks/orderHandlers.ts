@@ -15,6 +15,7 @@ import {
   generateOrderId,
   isOrderOwner,
   saveOrder,
+  findOrdersByOwner,
 } from './orderStore'
 
 
@@ -73,6 +74,24 @@ function isValidOrderInput(
 }
 
 export const orderHandlers = [
+
+  // Listar pedidos do colecionador autenticado
+  http.get('/api/orders', ({ request }) => {
+    const ownerId = getCartOwnerId(request)
+
+    if (!ownerId.startsWith('user:')) {
+      return errorResponse(
+        'UNAUTHORIZED',
+        'Entre na sua conta para consultar seus pedidos.',
+        401
+      )
+    }
+
+    return HttpResponse.json(
+      findOrdersByOwner(ownerId)
+    )
+  }),
+
   // Criar pedido
   http.post('/api/orders', async ({ request }) => {
     const sessionId = getSessionId(request)
