@@ -12,6 +12,8 @@ import { NFTDetail } from '../features/catalog/components/NFTDetail'
 import { CartPage } from '../features/cart/components/CartPage'
 import { CheckoutPage } from '../features/checkout/components/CheckoutPage'
 import OrderConfirmationPage from '../features/checkout/components/OrderConfirmationPage'
+import { LoginPage } from '../features/auth/components/LoginPage'
+import { RegisterPage } from '../features/auth/components/RegisterPage'
 function RootLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -95,7 +97,13 @@ const nftDetailRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
-  component: () => <h1>Login - GreenMint</h1>,
+  component: LoginPage,
+})
+
+const registerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/cadastro',
+  component: RegisterPage,
 })
 
 // ROTA DO CARRINHO
@@ -125,6 +133,7 @@ const routeTree = rootRoute.addChildren([
   cartRoute,
   checkoutRoute,
   orderConfirmationRoute,
+  registerRoute,
 ])
 
 export const router = createRouter({

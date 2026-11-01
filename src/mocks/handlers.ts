@@ -4,6 +4,7 @@ import { initialNFTs } from './fixtures/nfts'
 import { cartHandlers } from './cartHandlers'
 import type { NFT, NFTListResponse } from '../types/nft'
 import { orderHandlers } from './orderHandlers'
+import { authHandlers } from './authHandlers'
 
 const PAGE_SIZE = 6
 
@@ -117,6 +118,9 @@ export const handlers = [
    // Endpoints do carrinho
   ...cartHandlers,
 
-  // Endpoints dos pedidos
+    // Endpoints dos pedidos
   ...orderHandlers,
+
+  // Endpoints de autenticação
+  ...authHandlers,
 ]
