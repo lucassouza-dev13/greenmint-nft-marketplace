@@ -11,6 +11,7 @@ import {
   findOrder,
   findOrderByIdempotencyKey,
   generateOrderId,
+  isOrderOwner,
   saveOrder,
 } from './orderStore'
 
@@ -47,7 +48,6 @@ const validNetworks: PaymentNetwork[] = [
 
 // Relaciona os pedidos às sessões que os criaram.
 // Nesta etapa, os dados ainda são temporários.
-const orderOwners = new Map<string, string>()
 
 function getSessionId(request: Request): string {
   return request.headers.get('x-session-id') ?? 'guest'
@@ -170,7 +170,6 @@ export const orderHandlers = [
       order
     )
 
-    orderOwners.set(order.id, sessionId)
 
     // Atualiza o estoque dos NFTs adquiridos.
     for (const item of cart.items) {
@@ -207,7 +206,7 @@ export const orderHandlers = [
       )
     }
 
-    if (orderOwners.get(orderId) !== sessionId) {
+    if (!isOrderOwner(orderId, sessionId)) {
       return errorResponse(
         'ORDER_NOT_FOUND',
         'Pedido não encontrado.',

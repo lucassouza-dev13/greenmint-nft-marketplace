@@ -360,9 +360,14 @@ export function CartPage() {
               </div>
             </div>
 
-            <p className="mt-6 text-xs text-[#b9a89b]">
-              O checkout será conectado na próxima etapa.
-            </p>
+            
+<Link
+  to="/checkout"
+  className="mt-6 flex w-full items-center justify-center rounded-xl bg-[#e49a55] px-6 py-4 text-base font-bold text-[#120d0a] transition hover:bg-[#f1b579] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e49a55]"
+>
+  Finalizar compra →
+</Link>
+
           </aside>
         </div>
       )}
