@@ -1,10 +1,34 @@
 
-import { Link } from '@tanstack/react-router'
-import { Menu, ShoppingCart, UserRound } from 'lucide-react'
+import { Link, useNavigate } from '@tanstack/react-router'
+import {
+  LogIn,
+  LogOut,
+  Menu,
+  ShoppingCart,
+  UserRound,
+} from 'lucide-react'
 import { useState } from 'react'
+import { useCurrentUser, useLogout } from '../../features/auth/hooks/useAuth'
+
 
 export function Header() {
+  const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  const currentUser = useCurrentUser()
+  const logout = useLogout()
+
+ const user = currentUser.data
+  const isAuthenticated = Boolean(user)
+
+  async function handleLogout() {
+    try {
+      await logout.mutateAsync()
+    } finally {
+      setMenuOpen(false)
+      await navigate({ to: '/login' })
+    }
+  }
 
   return (
     <header className="border-b border-[#49352b] bg-[#120d0a]">
@@ -28,10 +52,10 @@ export function Header() {
           </Link>
 
           <Link
-            to="/login"
+            to={isAuthenticated ? '/' : '/login'}
             className="text-sm text-[#f5f0e8] hover:text-[#e49a55]"
           >
-            Minha conta
+            {isAuthenticated ? `Olá, ${user?.name}` : 'Minha conta'}
           </Link>
         </nav>
 
@@ -44,13 +68,33 @@ export function Header() {
             <ShoppingCart size={22} />
           </Link>
 
-          <Link
-            to="/login"
-            aria-label="Entrar na conta"
-            className="hidden rounded-lg p-2 text-[#f5f0e8] hover:bg-[#30221c] sm:inline-flex"
-          >
-            <UserRound size={22} />
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <span className="hidden text-sm text-[#e49a55] lg:inline">
+                {user?.name}
+              </span>
+
+              <button
+                type="button"
+                aria-label="Sair da conta"
+                title="Sair da conta"
+                disabled={logout.isPending}
+                onClick={() => void handleLogout()}
+                className="hidden rounded-lg p-2 text-[#f5f0e8] hover:bg-[#30221c] disabled:opacity-50 sm:inline-flex"
+              >
+                <LogOut size={22} />
+              </button>
+            </>
+          ) : (
+            <Link
+              to="/login"
+              aria-label="Entrar na conta"
+              title="Entrar"
+              className="hidden rounded-lg p-2 text-[#f5f0e8] hover:bg-[#30221c] sm:inline-flex"
+            >
+              <UserRound size={22} />
+            </Link>
+          )}
 
           <button
             type="button"
@@ -74,18 +118,38 @@ export function Header() {
           <Link
             to="/"
             onClick={() => setMenuOpen(false)}
-            className="rounded-lg px-3 py-2 hover:bg-[#30221c]"
+            className="rounded-lg px-3 py-2 text-[#f5f0e8] hover:bg-[#30221c]"
           >
             Explorar NFTs
           </Link>
 
-          <Link
-            to="/login"
-            onClick={() => setMenuOpen(false)}
-            className="rounded-lg px-3 py-2 hover:bg-[#30221c]"
-          >
-            Minha conta
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-[#e49a55]">
+                <UserRound size={18} />
+                {user?.name}
+              </div>
+
+              <button
+                type="button"
+                disabled={logout.isPending}
+                onClick={() => void handleLogout()}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-[#f5f0e8] hover:bg-[#30221c] disabled:opacity-50"
+              >
+                <LogOut size={18} />
+                Sair da conta
+              </button>
+            </>
+          ) : (
+            <Link
+              to="/login"
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-[#f5f0e8] hover:bg-[#30221c]"
+            >
+              <LogIn size={18} />
+              Entrar na conta
+            </Link>
+          )}
         </nav>
       )}
     </header>

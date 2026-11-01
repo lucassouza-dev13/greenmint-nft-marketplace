@@ -2,6 +2,7 @@
 import { http, HttpResponse } from 'msw'
 import { initialNFTs } from './fixtures/nfts'
 import type { Cart, CartItem } from '../types/cart'
+import { getCartOwnerId } from './authIdentity'
 
 type StoredItem = {
   nftId: string
@@ -138,7 +139,7 @@ function fromWei(wei: bigint): string {
 }
 
 function getSessionId(request: Request): string {
-  return request.headers.get('x-session-id') ?? 'guest'
+  return getCartOwnerId(request)
 }
 
 function getStoredItems(sessionId: string): StoredItem[] {

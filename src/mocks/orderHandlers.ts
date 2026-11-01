@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 
 import { initialNFTs } from './fixtures/nfts'
 import { saveNFTStock } from './nftStore'
+import { getCartOwnerId } from './authIdentity'
 import {
   buildCart,
   clearCartAfterOrder,
@@ -51,7 +52,7 @@ const validNetworks: PaymentNetwork[] = [
 // Nesta etapa, os dados ainda são temporários.
 
 function getSessionId(request: Request): string {
-  return request.headers.get('x-session-id') ?? 'guest'
+  return getCartOwnerId(request)
 }
 
 function isValidOrderInput(
